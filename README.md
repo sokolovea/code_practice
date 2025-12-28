@@ -1,3 +1,3 @@
-# Leetcode
+# Code practice
 
-My leetcode solutions
+My leetcode and other training solutions
