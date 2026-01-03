@@ -3,7 +3,7 @@ name = "yandex_algo_math_ml"
 version = "0.1.0"
 description = "Some solutions for Yandex Handbook (mathematics and ML): https://education.yandex.ru/handbook/math"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = []
 
 [dependency-groups]

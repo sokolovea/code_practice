@@ -27,10 +27,9 @@ def small_graph_negative_undirected():
          ('C', 'A', 4),
          ('B', 'C', 10),
          ('C', 'B', -1),
-         ('B', 'D', 1),
-         ('D', 'B', 1),
-         ('C', 'D', -5),
-         ('D', 'C', -5)]
+         ('B', 'D', 2),
+         ('D', 'B', 2),
+         ('C', 'D', -1)]
     )
 
 @pytest.fixture

@@ -31,7 +31,7 @@ def dijkstra(graph : tuple[set, list[tuple[str, str, int]]], start: str, end: st
         passed_vertices.add(vertex)
         for edge in graph[1]:
             if edge[0] == vertex:
-                if distances[edge[0]] + edge[2] <= distances[edge[1]]:
+                if distances[edge[0]] + edge[2] < distances[edge[1]]:
                     distances[edge[1]] = distances[edge[0]] + edge[2]
                     priority_queue.put((distances[edge[1]], edge[1]))
     return distances[end]
