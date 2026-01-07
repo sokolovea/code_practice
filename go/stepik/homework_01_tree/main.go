@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -14,80 +13,88 @@ type dirAndLevel struct {
 	level       int
 }
 
-func printDirectoryOrFile(parOut io.Writer, fileName string, level int, isLast bool) {
+func printDirectoryOrFile(parOut io.Writer, fileName string, level int, isLastFile bool, isParentDirLast bool) {
 	var stringPath strings.Builder
 	var levelRepresentation string
-	if isLast {
+
+	if isLastFile {
 		levelRepresentation = "└───"
 	} else {
 		levelRepresentation = "├───"
 	}
-	for i := 1; i < level; i++ {
-		stringPath.WriteString("|\t")
+
+	var stringSeparator string = "|\t"
+
+	if isParentDirLast {
+		for i := 0; i < level-1; i++ {
+			stringPath.WriteString(stringSeparator)
+		}
+		if level != 0 {
+			stringPath.WriteString("\t")
+		}
+	} else {
+		for i := 0; i < level; i++ {
+			stringPath.WriteString(stringSeparator)
+		}
 	}
+
 	stringPath.WriteString(levelRepresentation)
 	stringPath.WriteString(fileName)
 	stringPath.WriteRune('\n')
 	parOut.Write([]byte(stringPath.String()))
 }
 
+func dirTreeInner(parOut io.Writer, parDirFiles []os.DirEntry, parBasePath string, parPrintFiles bool, parLevel int) error {
+	var currentFilesLevelLength = len(parDirFiles)
+	if currentFilesLevelLength > 0 {
+		var parCurrentFile os.DirEntry
+		parDirFiles, parCurrentFile = parDirFiles[:len(parDirFiles)-1], parDirFiles[len(parDirFiles)-1]
+		sort.Slice(parDirFiles, func(i, j int) bool {
+			return parDirFiles[i].Name() > parDirFiles[j].Name()
+		})
+		printDirectoryOrFile(parOut, parCurrentFile.Name(), parLevel, len(parDirFiles) == 0, currentFilesLevelLength == 1)
+		currentDirectoryPath := parBasePath + string(os.PathSeparator) + parCurrentFile.Name()
+
+		if parCurrentFile.IsDir() {
+			currentDirectory, error := os.Open(currentDirectoryPath)
+			if error != nil {
+				return error
+			}
+
+			subDirFiles, error := currentDirectory.ReadDir(0)
+
+			if error != nil {
+				return error
+			}
+
+			dirTreeInner(parOut, subDirFiles, currentDirectoryPath, parPrintFiles, parLevel+1)
+		}
+		dirTreeInner(parOut, parDirFiles, parBasePath, parPrintFiles, parLevel)
+	}
+	return nil
+}
+
 func dirTree(parOut io.Writer, parPath string, parPrintFiles bool) error {
 
-	var dirFiles []os.FileInfo
+	var dirFiles []os.DirEntry
 
-	var dirFilesStack []dirAndLevel = make([]dirAndLevel, 0, 10)
-
-	var currentDirectoryLevel int = 0
-
-	for {
-		currentDirectory, error := os.Open(parPath)
-		if error != nil {
-			return error
-		}
-
-		error = currentDirectory.Chdir()
-		if error != nil {
-			return error
-		}
-
-		dirFiles, error = currentDirectory.Readdir(0)
-		if error != nil {
-			return error
-		}
-
-		sort.Slice(dirFiles, func(i, j int) bool {
-			return dirFiles[i].Name() < dirFiles[j].Name()
-		})
-
-		var dirAndLevel dirAndLevel
-
-		dirAndLevel.directories = dirFiles
-		dirAndLevel.level = currentDirectoryLevel + 1
-		dirAndLevel.path = parPath
-
-		if len(dirAndLevel.directories) == 0 {
-			continue
-		}
-
-		dirFilesStack = append(dirFilesStack, dirAndLevel)
-
-		if len(dirFilesStack) == 0 {
-			fmt.Printf("Debug: EXIT!")
-			break
-		}
-
-		currentFilesLevel := dirFilesStack[len(dirFilesStack)-1]
-		dirFilesStack = dirFilesStack[:len(dirFilesStack)-1]
-
-		var currentFilesLevelLength = len(currentFilesLevel.directories)
-
-		if currentFilesLevelLength > 0 {
-			currentFilesLevel.directories, parPath = currentFilesLevel.directories[:len(currentFilesLevel.directories)-1], currentFilesLevel.directories[len(currentFilesLevel.directories)-1].Name()
-			parPath = dirAndLevel.path + string(os.PathSeparator) + parPath
-			printDirectoryOrFile(parOut, parPath, currentFilesLevel.level, len(currentFilesLevel.directories) == 0)
-			dirFilesStack = append(dirFilesStack, currentFilesLevel)
-		}
+	currentDirectory, error := os.Open(parPath)
+	if error != nil {
+		return error
 	}
+
+	error = currentDirectory.Chdir()
+	if error != nil {
+		return error
+	}
+
+	dirFiles, error = currentDirectory.ReadDir(0)
+	if error != nil {
+		return error
+	}
+
+	dirTreeInner(parOut, dirFiles, parPath, parPrintFiles, 0)
+
 	return nil
 }
 
