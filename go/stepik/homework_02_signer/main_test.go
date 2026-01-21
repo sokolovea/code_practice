@@ -22,41 +22,41 @@ is exhausted) and only then passing it to next function in pipeline. This is a w
 allow to work with tasks that requires input of undefined length. You need to pass the computed result of
 the function to the next function in pipeline as soon as it is ready.
 */
-// func TestPipeline(t *testing.T) {
+func TestPipeline(t *testing.T) {
 
-// 	var ok = true
-// 	var recieved uint32
-// 	freeFlowJobs := []job{
-// 		job(func(in, out chan interface{}) {
-// 			out <- 1
-// 			time.Sleep(10 * time.Millisecond)
-// 			currRecieved := atomic.LoadUint32(&recieved)
-// 			// в чем тут суть
-// 			// если вы накапливаете значения, то пока вся функция не отрабоатет - дальше они не пойдут
-// 			// тут я проверяю, что счетчик увеличился в следующей функции
-// 			// это значит что туда дошло значение прежде чем текущая функция отработала
+	var ok = true
+	var recieved uint32
+	freeFlowJobs := []job{
+		job(func(in, out chan interface{}) {
+			out <- 1
+			time.Sleep(10 * time.Millisecond)
+			currRecieved := atomic.LoadUint32(&recieved)
+			// в чем тут суть
+			// если вы накапливаете значения, то пока вся функция не отрабоатет - дальше они не пойдут
+			// тут я проверяю, что счетчик увеличился в следующей функции
+			// это значит что туда дошло значение прежде чем текущая функция отработала
 
-// 			// Here is a gist of this test:
-// 			// If you are accumulating values instead of implementing a pipeline, you are not passing values to the
-// 			// next funcion before your current function is finished. That is what I am checking: counter
-// 			// should increase in next function (meaning that values are going there) before current function
-// 			// finished its execution.
+			// Here is a gist of this test:
+			// If you are accumulating values instead of implementing a pipeline, you are not passing values to the
+			// next funcion before your current function is finished. That is what I am checking: counter
+			// should increase in next function (meaning that values are going there) before current function
+			// finished its execution.
 
-// 			if currRecieved == 0 {
-// 				ok = false
-// 			}
-// 		}),
-// 		job(func(in, out chan interface{}) {
-// 			for _ = range in {
-// 				atomic.AddUint32(&recieved, 1)
-// 			}
-// 		}),
-// 	}
-// 	ExecutePipeline(freeFlowJobs...)
-// 	if !ok || recieved == 0 {
-// 		t.Errorf("no value free flow - dont collect them")
-// 	}
-// }
+			if currRecieved == 0 {
+				ok = false
+			}
+		}),
+		job(func(in, out chan interface{}) {
+			for _ = range in {
+				atomic.AddUint32(&recieved, 1)
+			}
+		}),
+	}
+	ExecutePipeline(freeFlowJobs...)
+	if !ok || recieved == 0 {
+		t.Errorf("no value free flow - dont collect them")
+	}
+}
 
 func TestSigner(t *testing.T) {
 

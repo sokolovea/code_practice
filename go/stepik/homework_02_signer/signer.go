@@ -5,13 +5,21 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+// type endOfChan {}
 
 var SingleHash job = func(in, out chan interface{}) {
 	fmt.Printf("SingleHash!!!\n");
-	counter := 0
-	InputElemsCount := len(in)
-	for data := range in {
+	// InputElemsCount := len(in)
+	// fmt.Printf("InputElemsCount = %v!!!\n", InputElemsCount);
+	for {
+		data, ok := <-in
+		if !ok {
+			fmt.Println("Канал SingleHash закрыт")
+			break
+		}
 		fmt.Printf("SingleHash get data!\n");
 		dataString, ok := data.(string)
 		if !ok {
@@ -24,19 +32,18 @@ var SingleHash job = func(in, out chan interface{}) {
 		}
 		fmt.Printf("SingleHash: data = %v \n", dataString);
 		out <- DataSignerCrc32(dataString) + "~" + DataSignerCrc32(DataSignerMd5(dataString))
-		counter++
-		if counter == InputElemsCount {
-			break
-		}
 	}
 }
 
 var MultiHash job = func(in, out chan interface{}) {
 	fmt.Printf("MultiHash!!!\n");
 	preResult := make([]string, 6)
-	counter := 0
-	InputElemsCount := len(in)
-	for data := range in {
+	for {
+		data, ok := <-in
+		if !ok {
+			fmt.Println("Канал MultiHash закрыт")
+			break
+		}
 		fmt.Printf("MultiHash get data!\n")
 		dataString, ok := data.(string)
 		if !ok {
@@ -49,30 +56,25 @@ var MultiHash job = func(in, out chan interface{}) {
 		preResult := strings.Join(preResult, "")
 		fmt.Printf("MultiHash: data = %v \n", preResult);
 		out <- preResult
-		counter++
-		if counter == InputElemsCount {
-			break
-		}
 	}
 }
 
 var CombineResults job = func(in, out chan interface{}) {
 	fmt.Printf("CombineResults!!!\n");
 	var allData []string = make([]string, 0, 200)
-	counter := 0
-	InputElemsCount := len(in)
-	for data := range in {
+	for {
+		data, ok := <-in
+		if !ok {
+			fmt.Println("Канал CombineResults закрыт")
+			break
+		}
 		fmt.Printf("CombineResults get data!\n");
-		data, ok := data.(string)
+		dataString, ok := data.(string)
 		if !ok {
 			fmt.Printf("CombineResults data not ok!\n");
 			continue
 		}
-		allData = append(allData, data)
-		counter++
-		if counter == InputElemsCount {
-			break
-		}
+		allData = append(allData, dataString)
 	}
 	sort.Slice(allData, func(i, j int) bool {
 		return allData[i] < allData[j]
@@ -90,36 +92,17 @@ func ExecutePipeline(jobs ...job) {
 	}
 
 	fmt.Printf("%v\n", jobs)
+	var wg sync.WaitGroup
+	wg.Add(len(jobs))
+	close(channels[0])
 	for i, job := range(jobs) {
-		job(channels[i], channels[i + 1])
+		go func(){
+			job(channels[i], channels[i + 1])
+			close(channels[i + 1])
+			fmt.Println("job done!!!!!!!!!!!!!!!!!!!!!!!!!")
+			wg.Done()
+		}()
 	}
 
-	for i := 0; i < len(jobs) + 1; i++ {
-		close(channels[i])
-	}
-}
-
-func main() {
-	inputData := []int{0, 1, 1, 2, 3, 5, 8}
-	hashSignJobs := []job{
-		job(func(in, out chan interface{}) {
-			for _, fibNum := range inputData {
-				out <- fibNum
-			}
-		}),
-		job(SingleHash),
-		job(MultiHash),
-		job(CombineResults),
-		job(func(in, out chan interface{}) {
-			dataRaw := <-in
-			data, ok := dataRaw.(string)
-			if !ok {
-				fmt.Printf("Pipeline data not valid!\n");
-			} else {
-				fmt.Printf("CombineResults result data = %v\n", data);
-			}
-		}),
-	}
-
-	ExecutePipeline(hashSignJobs...)
+	wg.Wait()
 }
