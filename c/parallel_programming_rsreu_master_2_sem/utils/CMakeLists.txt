@@ -3,6 +3,7 @@ project(utils C)
 
 set(CMAKE_C_STANDARD 23)
 
-add_library(bmp STATIC
+add_library(utils STATIC
         bitmap.h
-        bitmap.c)
+        bitmap.c
+        kernel.c)

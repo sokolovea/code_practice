@@ -42,8 +42,8 @@ struct Bitmap24Image
 {
     size_t width;
     size_t height;
-    struct BitmapFileHeader bitmapFileHeader;
-    struct BitmapInfoHeaderV3 bitmapInfoHeaderV3;
+    struct BitmapFileHeader bitmap_file_header;
+    struct BitmapInfoHeaderV3 bitmap_info_header_v3;
     struct Bitmap24Pixel* pixels;
 };
 
