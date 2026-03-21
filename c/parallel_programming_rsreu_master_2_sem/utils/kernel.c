@@ -70,3 +70,4 @@ struct Bitmap24Pixel get_bitmap24_pixel_rms(const struct Bitmap24Pixel* const fi
                                   .green = (uint8_t)sqrt((double)firstPixel->green * (double)firstPixel->green + (double)secondPixel->green * (double)secondPixel->green),
                                   .blue = (uint8_t)sqrt((double)firstPixel->blue * (double)firstPixel->blue + (double)secondPixel->blue * (double)secondPixel->blue)};
 }
+

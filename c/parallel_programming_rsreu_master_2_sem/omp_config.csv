@@ -1,0 +1,17 @@
+test_name,runs,input_file,iterations,num_threads,places,proc_bind
+cores_1,50,input.bmp,50,1,cores,false
+cores_2,50,input.bmp,50,2,cores,spread
+cores_3,50,input.bmp,50,3,cores,spread
+cores_4,100,input.bmp,100,4,cores,spread
+cores_6,100,input.bmp,100,6,cores,spread
+cores_8,200,input.bmp,200,8,cores,spread
+threads_1,50,input.bmp,50,1,threads,false
+threads_2,50,input.bmp,50,2,threads,spread
+threads_3,50,input.bmp,50,3,threads,spread
+threads_4,100,input.bmp,100,4,threads,spread
+threads_6,100,input.bmp,100,6,threads,spread
+threads_8,200,input.bmp,200,8,threads,spread
+threads_10,200,input.bmp,200,10,threads,spread
+threads_12,200,input.bmp,200,12,threads,spread
+threads_14,200,input.bmp,200,14,threads,spread
+threads_16,200,input.bmp,200,16,threads,spread
