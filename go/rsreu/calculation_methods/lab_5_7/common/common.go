@@ -1,20 +1,37 @@
 package common
 
-/*
-Найти точку минимума функции одной переменной, определенной вариантом задания,
-методами перебора и поразрядного поиска с заданной погрешностью. Для каждого
-метода вывести точку минимума, значение функции в точке минимума, число
-вычислений значения функции в процессе минимизации. Проверку результата
-выполнить с помощью встроенных к Matlab (Scilab) функций минимизации при
-погрешности, в 100 раз меньшей заданной.
-*/
+import (
+	"fmt"
+	"math"
+)
+
+// Common types
 
 type F func(float64) float64
 
 type MinimizeResult struct {
-	XMin  float64
-	YMin  float64
-	Iters uint64
+	XMin            float64
+	YMin            float64
+	FuncCallCounter uint64
 }
 
-type Minimize func(left float64, right float64, HandlingFunc F, eps float64) MinimizeResult
+func (minimizeResult MinimizeResult) String() string {
+	return fmt.Sprintf("Xmin = %0.7f; Ymin = %0.7f; f(x) and derivative calls count = %v",
+		minimizeResult.XMin, minimizeResult.YMin, minimizeResult.FuncCallCounter)
+}
+
+// Common functions and vars for tests (benchmarks)
+
+func FTest(x float64) float64 {
+	return math.Log(x+2) + math.Cos(2+x) - 0.35
+}
+
+func GTest(x float64) float64 {
+	return 1/(x+2) - math.Sin(2+x)
+}
+
+func G2Test(x float64) float64 {
+	return -1/((x+2)*(x+2)) - math.Cos(2+x)
+}
+
+var EpsilonsTest []float64 = []float64{1e-3, 1e-5, 1e-7}
