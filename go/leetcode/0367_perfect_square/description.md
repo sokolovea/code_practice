@@ -4,7 +4,6 @@ A perfect square is an integer that is the square of an integer. In other words,
 
 You must not use any built-in library function, such as sqrt.
 
- 
 
 Example 1:
 

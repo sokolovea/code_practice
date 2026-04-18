@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ type dirAndLevel struct {
 	level       int
 }
 
-func printDirectoryOrFile(parOut io.Writer, fileName string, isLastFile bool, parentDirsLast []bool) {
+func printDirectoryOrFile(parOut io.Writer, fileName string, isCurrentFileDir bool, isLastFile bool, parentDirsLast []bool, fileSizeBytes int64) {
 	var stringPath strings.Builder
 	var levelRepresentation string
 
@@ -34,6 +35,16 @@ func printDirectoryOrFile(parOut io.Writer, fileName string, isLastFile bool, pa
 
 	stringPath.WriteString(levelRepresentation)
 	stringPath.WriteString(fileName)
+	if isCurrentFileDir {
+		stringPath.WriteString(" (")
+		if fileSizeBytes == 0 {
+			stringPath.WriteString("empty")
+		} else {
+			stringPath.WriteString(strconv.FormatInt(fileSizeBytes, 10))
+			stringPath.WriteRune('b')
+		}
+		stringPath.WriteRune(')')
+	}
 	stringPath.WriteRune('\n')
 	parOut.Write([]byte(stringPath.String()))
 }
@@ -46,23 +57,37 @@ func dirTreeInner(parOut io.Writer, parDirFiles []os.DirEntry, parBasePath strin
 			return parDirFiles[i].Name() > parDirFiles[j].Name()
 		})
 		parDirFiles, parCurrentFile = parDirFiles[:len(parDirFiles)-1], parDirFiles[len(parDirFiles)-1]
-		printDirectoryOrFile(parOut, parCurrentFile.Name(), len(parDirFiles) == 0, parentDirsLast)
-		currentDirectoryPath := parBasePath + string(os.PathSeparator) + parCurrentFile.Name()
-		if parCurrentFile.IsDir() {
-			currentDirectory, error := os.Open(currentDirectoryPath)
+
+		currentFilePath := parBasePath + string(os.PathSeparator) + parCurrentFile.Name()
+
+		fileInfo, error := parCurrentFile.Info()
+		var fileSizeBytesInfo int64
+		if error != nil {
+			fileSizeBytesInfo = 0
+		} else {
+			fileSizeBytesInfo = fileInfo.Size()
+		}
+
+		isCurrentFileDir := parCurrentFile.IsDir()
+		if isCurrentFileDir || parPrintFiles {
+			printDirectoryOrFile(parOut, parCurrentFile.Name(), isCurrentFileDir, len(parDirFiles) == 0, parentDirsLast, fileSizeBytesInfo)
+		}
+		if isCurrentFileDir {
+
+			currentFile, error := os.Open(currentFilePath)
 			if error != nil {
 				return error
 			}
 
-			subDirFiles, error := currentDirectory.ReadDir(0)
+			subDirFiles, error := currentFile.ReadDir(0)
 
 			if error != nil {
 				return error
 			}
 			if currentFilesLevelLength == 1 {
-				dirTreeInner(parOut, subDirFiles, currentDirectoryPath, parPrintFiles, append(parentDirsLast, true))
+				dirTreeInner(parOut, subDirFiles, currentFilePath, parPrintFiles, append(parentDirsLast, true))
 			} else {
-				dirTreeInner(parOut, subDirFiles, currentDirectoryPath, parPrintFiles, append(parentDirsLast, false))
+				dirTreeInner(parOut, subDirFiles, currentFilePath, parPrintFiles, append(parentDirsLast, false))
 			}
 		}
 		dirTreeInner(parOut, parDirFiles, parBasePath, parPrintFiles, parentDirsLast)
@@ -75,11 +100,6 @@ func dirTree(parOut io.Writer, parPath string, parPrintFiles bool) error {
 	var dirFiles []os.DirEntry
 
 	currentDirectory, error := os.Open(parPath)
-	if error != nil {
-		return error
-	}
-
-	error = currentDirectory.Chdir()
 	if error != nil {
 		return error
 	}
