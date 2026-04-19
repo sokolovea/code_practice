@@ -118,11 +118,3 @@ func GradientDescent(startX1 float64, startX2 float64,
 	return c.MinimizeResult2d{X1Min: x1Min, X2Min: x2Min,
 		FuncMin: fMin, FuncCallCounter: i}
 }
-
-func sign(x float64) float64 {
-	if x > 0 {
-		return 1
-	} else {
-		return -1
-	}
-}
