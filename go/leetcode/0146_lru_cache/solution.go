@@ -5,64 +5,89 @@ import "fmt"
 type KeyValue struct {
 	Key   int
 	Value int
-	Valid bool
 }
 
-type RingBuffer struct {
-	buffer   []KeyValue
-	curIndex int
+type DoubleLinkedElement struct {
+	Data KeyValue
+	Prev *DoubleLinkedElement
+	Next *DoubleLinkedElement
 }
 
-func (this *RingBuffer) Push(value KeyValue) {
-	var newElemIndex int = (this.curIndex + 1) % len(this.buffer)
-	this.buffer[newElemIndex] = value
-	this.curIndex = newElemIndex
+type DoubleLinkedList struct {
+	First    *DoubleLinkedElement
+	Last     *DoubleLinkedElement
+	Length   int
+	Capacity int
 }
 
-func (this *RingBuffer) AfterTop() KeyValue {
-	return this.buffer[(this.curIndex+1)%len(this.buffer)]
-}
-
-func (this *RingBuffer) topPtr() *KeyValue {
-	return &this.buffer[this.curIndex]
-}
-
-func (this *RingBuffer) updateTTL(
-	updatedElementPtr *KeyValue) (*KeyValue, *KeyValue) {
-	if &this.buffer[this.curIndex] != updatedElementPtr {
-		*updatedElementPtr, this.buffer[this.curIndex] =
-			this.buffer[this.curIndex], *updatedElementPtr
+func (this *DoubleLinkedList) Add(key int, value int) *int {
+	var deleteKey *int = nil
+	if this.Length >= this.Capacity {
+		deleteKey = &this.First.Data.Key
+		this.DeleteFirst()
 	}
-	return &(this.buffer[this.curIndex]), updatedElementPtr
+	newElem := new(DoubleLinkedElement)
+	newElem.Data.Key = key
+	newElem.Data.Value = value
+	if this.Last == nil {
+		this.Last = newElem
+		this.First = this.Last
+	} else {
+		this.Last.Next = newElem
+		newElem.Prev = this.Last
+		this.Last = newElem
+	}
+	this.Length++
+	return deleteKey
 }
 
-func (this *RingBuffer) Get(index int) KeyValue {
-	return this.buffer[this.curIndex]
+func (this *DoubleLinkedList) DeleteFirst() {
+	if this.First != nil {
+		this.First = this.First.Next
+		if this.First != nil {
+			this.First.Prev = nil
+		} else {
+			this.Last = nil
+		}
+		this.Length -= 1
+	}
+}
+
+func (this *DoubleLinkedList) updateTTL(node *DoubleLinkedElement) {
+	if node == this.Last {
+		return
+	}
+	// cut
+	if node.Next != nil {
+		node.Next.Prev = node.Prev
+	}
+	if node.Prev == nil {
+		this.First = node.Next
+	} else {
+		node.Prev.Next = node.Next
+	}
+	// move to the last
+	node.Next = nil
+	node.Prev = this.Last
+	if this.Last != nil {
+		this.Last.Next = node
+	}
+	this.Last = node
 }
 
 type LRUCache struct {
-	KeyMap          map[int]*KeyValue
-	ValueRingBuffer RingBuffer
-	Capacity        int
+	KeyMap    map[int]*DoubleLinkedElement
+	ValueList DoubleLinkedList
+	Capacity  int
 }
 
 func Constructor(capacity int) LRUCache {
 	return LRUCache{
-		KeyMap: make(map[int]*KeyValue),
-		ValueRingBuffer: RingBuffer{
-			buffer:   make([]KeyValue, capacity),
-			curIndex: capacity - 1,
+		KeyMap: make(map[int]*DoubleLinkedElement),
+		ValueList: DoubleLinkedList{
+			Capacity: capacity,
 		},
 		Capacity: capacity,
-	}
-}
-
-func (this *LRUCache) updateTTL(elemPtr *KeyValue) {
-	exchangedKeyValuePtr1, exchangedKeyValuePtr2 :=
-		this.ValueRingBuffer.updateTTL(elemPtr)
-	if exchangedKeyValuePtr1 != exchangedKeyValuePtr2 {
-		this.KeyMap[(*exchangedKeyValuePtr1).Key] = exchangedKeyValuePtr1
-		this.KeyMap[(*exchangedKeyValuePtr2).Key] = exchangedKeyValuePtr2
 	}
 }
 
@@ -71,25 +96,23 @@ func (this *LRUCache) Get(key int) int {
 	if elemPtr == nil {
 		return -1
 	}
-	value := *elemPtr
-	this.updateTTL(elemPtr)
-	return value.Value
+	value := elemPtr.Data.Value
+	this.ValueList.updateTTL(elemPtr)
+	return value
 }
 
 func (this *LRUCache) Put(key int, value int) {
 	elemPtr := this.KeyMap[key]
-	if elemPtr == nil {
-		deleteKeyValue := this.ValueRingBuffer.AfterTop()
-		//maybe not init if RingBuffer partially filled
-		if deleteKeyValue.Valid {
-			delete(this.KeyMap, deleteKeyValue.Key)
-		}
-		this.ValueRingBuffer.Push(KeyValue{Key: key, Value: value, Valid: true})
+	if elemPtr != nil {
+		elemPtr.Data.Value = value
+		this.ValueList.updateTTL(elemPtr)
 	} else {
-		elemPtr.Value = value
-		this.updateTTL(elemPtr)
+		deleteKey := this.ValueList.Add(key, value)
+		if deleteKey != nil {
+			delete(this.KeyMap, *deleteKey)
+		}
 	}
-	this.KeyMap[key] = this.ValueRingBuffer.topPtr()
+	this.KeyMap[key] = this.ValueList.Last
 }
 
 func main() {
